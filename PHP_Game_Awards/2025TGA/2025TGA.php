@@ -1,17 +1,40 @@
 <?php
-/**
- * TGA Portal - 2025 Winners Page
- * Internationalized Version for Global Domain
- */
-session_start(); // Session'ı başlatmayı unutma
 
-$mesaj = "";
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login_submit'])) {
-    $kullanici = htmlspecialchars($_POST['username']);
-    if (!empty($kullanici)) {
-        $_SESSION['username'] = $kullanici; // Basit bir session ataması
-        $mesaj = "Welcome, " . $_SESSION['username'] . "!";
+require dirname(__FILE__) . "/../auth_nav.php";
+// ... geri kalan kodlar
+                                
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
+    $kullanici = trim(htmlspecialchars($_POST['username'] ?? ''));
+    $sifre     = trim($_POST['password'] ?? ''); // Gelen şifrenin boşluklarını temizle
+    $usersFile = __DIR__ . "/../users/users.json"; // JSON dosya yolun
+
+    $girisHata = "";
+    if (!empty($kullanici) && !empty($sifre)) {
+        
+        // JSON dosyasını oku ve PHP dizisine çevir
+        if (file_exists($usersFile)) {
+            $jsonData = file_get_contents($usersFile);
+            $users = json_decode($jsonData, true) ?? [];
+        } else {
+            $users = [];
+        }
+
+        // Kullanıcı var mı ve şifresi eşleşiyor mu kontrolü
+        if (isset($users[$kullanici]) && $sifre === $users[$kullanici]['password']) {
+            $_SESSION['username'] = $kullanici;
+            
+            // PRG: POST sonrası GET'e yönlendir
+            header("Location: " . $_SERVER['PHP_SELF'] . "?giris=ok");
+            exit();
+        } else {
+            $girisHata = "Kullanıcı adı veya şifre yanlış.";
+        }
     }
+}
+
+// GET: giriş başarı mesajı
+if (isset($_GET['giris']) && $_GET['giris'] === 'ok') {
+    $girisBasari = "Giriş başarılı, hoş geldin!";
 }
 // 1. FUNCTIONS: Automatically determines CSS class based on Metascore
 function getMetascoreClass($score) {
@@ -106,15 +129,8 @@ $years = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"
     <meta name="description" content="The Game Awards 2025 winners and details for Game of the Year: Clair Obscur: Expedition 33.">
 </head>
 <body>
-<div class="auth-nav">
-    <?php if(!isset($_SESSION['username'])): ?>
-        <button class="auth-btn" onclick="openModal()">SIGN UP / LOGIN</button>
-    <?php else: ?>
-        <span style="color:var(--accent); font-weight:900;">
-            <i class="fas fa-user-circle"></i> Welcome, <?php echo $_SESSION['username']; ?>
-        </span>
-    <?php endif; ?>
-</div>
+<?php render_nav("../"); ?>
+
 
 <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
@@ -122,7 +138,9 @@ $years = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"
         
         <h2>LOGIN</h2>
         <p class="modal-info">Please login to interact, participate in polls and events.</p>
-        
+
+        <?php include "../modal_alert.php"; ?>  
+
         <form method="POST">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
@@ -135,15 +153,7 @@ $years = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"
     </div>
 </div>
 
-    <nav class="category-nav">
-        <div class="nav-container">
-            <a href="../ActionTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-sword"></i> ACTION</a>
-            <a href="../RPG_TGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-magic"></i> RPG</a>
-            <a href="../IndieTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-rocket"></i> INDIE</a>
-            <a href="../FightingTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-chess"></i> FIGHTING</a>
-            <a href="../NarrativeTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-trophy"></i> STORY</a>
-        </div>
-    </nav> 
+
 
     <nav class="side-nav">
         <?php foreach($years as $year): ?>
@@ -231,6 +241,11 @@ $years = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"
             <?php endforeach; ?>
         </div>
     </div>
+
+    <?php
+        $pageKey = "2025";
+        include "../comments_widget.php";
+    ?>
 
     <footer style="margin-top: 80px; padding: 40px; border-top: 1px solid rgba(197, 160, 89, 0.1); color: var(--text-dim); font-size: 0.8rem; text-align: center;">
         <p>&copy; <?php echo date("Y"); ?> TGA Portal. All rights reserved.</p>

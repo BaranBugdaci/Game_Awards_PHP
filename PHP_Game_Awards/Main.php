@@ -1,4 +1,7 @@
 <?php
+// Sayfanın en üstünde session ve ob_start başlatan dosyanı çağırıyoruz
+require "auth_nav.php"; 
+
 // 1. DİNAMİK VERİ LİSTESİ
 $tga_arsiv = [
     ["yil" => "2025", "link" => "/PHP_Game_Awards/2025TGA/2025TGA.php"],
@@ -12,12 +15,37 @@ $tga_arsiv = [
     ["yil" => "2017", "link" => "/PHP_Game_Awards/2017TGA/2017TGA.php"]
 ];
 
-// 2. FORM İŞLEME
-$mesaj = "";
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
-    $kullanici = htmlspecialchars($_POST['kullanici_ad']);
-    if (!empty($kullanici)) {
-        $mesaj = "Hoş geldin, " . $kullanici . "!";
+$usersFile = "users/users.json";
+$girisHata = "";
+
+// Sağ üst buton kontrolü için session'dan kullanıcı adını çekelim
+$mesaj = $_SESSION['username'] ?? "";
+
+// 2. FORM İŞLEME MOTORU (TÜM İSİMLER HTML İLE EŞLEŞTİRİLDİ)
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['giris_yap'])) {
+    $kullanici = trim(htmlspecialchars($_POST['kullanici_ad'] ?? ''));
+    $sifre     = $_POST['sifre'] ?? '';
+    
+    if (!empty($kullanici) && !empty($sifre)) {
+        
+        // JSON dosyasını oku
+        if (file_exists($usersFile)) {
+            $jsonData = file_get_contents($usersFile);
+            $users = json_decode($jsonData, true) ?? [];
+        } else {
+            $users = [];
+        }
+
+        // Kullanıcı var mı ve şifre JSON'daki şifreyle birebir aynı mı?
+        if (isset($users[$kullanici]) && $sifre === $users[$kullanici]['password']) {
+            $_SESSION['username'] = $kullanici;
+            
+            // PRG: Sayfa yenilendiğinde formun tekrar gönderilmesini engeller
+            header("Location: " . $_SERVER['PHP_SELF'] . "?giris=ok");
+            exit();
+        } else {
+            $girisHata = "Kullanıcı adı veya şifre yanlış.";
+        }
     }
 }
 ?>
@@ -51,14 +79,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
             background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)"/%3E%3C/svg%3E');
         }
 
-        /* SAĞ ÜST BUTON */
-        .auth-nav { position: absolute; top: 25px; right: 30px; z-index: 2000; }
+        /* SAĞ ÜST BUTON ALANI */
+        .auth-nav { position: absolute; top: 25px; right: 30px; z-index: 2000; display: flex; align-items: center; gap: 15px; }
         .auth-btn {
             background: transparent; color: var(--accent); border: 1px solid var(--accent);
             padding: 10px 20px; border-radius: 50px; font-weight: 800; cursor: pointer;
-            transition: 0.3s; letter-spacing: 1px; font-size: 0.8rem;
+            transition: 0.3s; letter-spacing: 1px; font-size: 0.8rem; text-decoration: none;
         }
         .auth-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px rgba(197, 160, 89, 0.3); }
+        
+        .user-welcome { color: var(--accent); font-weight: 900; letter-spacing: 1px; font-size: 0.9rem; text-decoration: none; display: flex; align-items: center; gap: 8px; background: rgba(197,160,89,0.08); border: 1px solid rgba(197,160,89,0.2); padding: 8px 18px; border-radius: 50px; transition: 0.2s; }
+        .user-welcome:hover { background: var(--accent); color: #000; }
 
         /* MODAL TASARIMI */
         .modal-overlay {
@@ -75,7 +106,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
 
         .modal-box h2 { color: var(--accent); margin-bottom: 10px; letter-spacing: 2px; }
         
-        /* EKLEDİĞİMİZ AÇIKLAMA METNİ */
         .modal-info {
             color: var(--text-dim); font-size: 0.85rem; margin-bottom: 25px;
             padding: 0 10px; line-height: 1.4;
@@ -91,15 +121,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
         .modal-box button {
             width: 100%; padding: 14px; background: var(--accent);
             border: none; font-weight: 900; border-radius: 10px; cursor: pointer;
-            transition: 0.3s; margin-bottom: 20px;
+            transition: 0.3s; margin-bottom: 20px; color: #000;
         }
         .modal-box button:hover { opacity: 0.9; transform: translateY(-2px); }
 
-        /* HESABINIZ YOK MU KISMI */
         .modal-footer { color: var(--text-dim); font-size: 0.85rem; border-top: 1px solid #222; padding-top: 20px; }
         .modal-footer a { color: var(--accent); text-decoration: none; font-weight: bold; }
 
-        /* ANA TASARIM (BOYUTLAR AYNI TUTULDU) */
+        /* ANA TASARIM */
         .container { max-width: 1200px; margin: 0 auto; padding: 60px 20px; }
         header { text-align: center; margin-bottom: 80px; }
         header h1 {
@@ -124,10 +153,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
 <body>
 
     <div class="auth-nav">
-        <?php if($mesaj == ""): ?>
+        <?php if(empty($mesaj)): ?>
             <button class="auth-btn" onclick="openModal()">KAYIT OL / GİRİŞ YAP</button>
         <?php else: ?>
-            <span style="color:var(--accent); font-weight:900;"><i class="fas fa-user-circle"></i> <?php echo $mesaj; ?></span>
+            <a href="/PHP_Game_Awards/Profile.php" class="user-welcome">
+                <i class="fas fa-user-circle"></i> <?php echo htmlspecialchars($mesaj); ?>
+            </a>
         <?php endif; ?>
     </div>
 
@@ -138,30 +169,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
             <h2>GİRİŞ YAP</h2>
             <p class="modal-info">Etkileşimde bulunmak, anketlere ve etkinliklere katılmak için lütfen giriş yapınız.</p>
             
-            <form method="POST">
+            <?php if(!empty($girisHata)): ?>
+                <div style="background: rgba(255,0,0,0.1); border: 1px solid #ff4d4d; color: #ff4d4d; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85rem; font-weight: bold;">
+                    <i class="fas fa-exclamation-circle"></i> <?php echo $girisHata; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php include "modal_alert.php"; ?>
+            
+            <form method="POST" action="">
                 <input type="text" name="kullanici_ad" placeholder="Kullanıcı Adı" required>
                 <input type="password" name="sifre" placeholder="Şifre" required>
                 <button type="submit" name="giris_yap">OTURUM AÇ</button>
             </form>
 
             <div class="modal-footer">
-                Hesabınız yok mu? <a href="/PHP_Game_Awards/Kayit_ol.php" rel="noopener noreferrer">Hemen Kayıt Olun</a>
+                Hesabınız yok mu? <a href="/PHP_Game_Awards/Register.php" rel="noopener noreferrer">Hemen Kayıt Olun</a>
             </div>
         </div>
     </div>
 
     <nav class="category-nav">
-    <div class="nav-container">
-        <a href="/PHP_Game_Awards/ActionTGA.php" rel="noopener noreferrer" class="cat-item">
-            <i class="fas fa-sword"></i> AKSİYON
-        </a>
-        </a>
-        <a href="/PHP_Game_Awards/RPG_TGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-magic"></i> RPG</a>
-        <a href="/PHP_Game_Awards/IndieTGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-rocket"></i> INDIE</a>
-        <a href="/PHP_Game_Awards/FightingTGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-chess"></i> DÖVÜŞ</a>
-        <a href="/PHP_Game_Awards/NarrativeTGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-trophy"></i> HİKAYE</a>
-    </div>
-</nav>
+        <div class="nav-container">
+            <a href="/PHP_Game_Awards/ActionTGA.php" rel="noopener noreferrer" class="cat-item">
+                <i class="fas fa-sword"></i> AKSİYON
+            </a>
+            <a href="/PHP_Game_Awards/RPG_TGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-magic"></i> RPG</a>
+            <a href="/PHP_Game_Awards/IndieTGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-rocket"></i> INDIE</a>
+            <a href="/PHP_Game_Awards/FightingTGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-chess"></i> DÖVÜŞ</a>
+            <a href="/PHP_Game_Awards/NarrativeTGA.php" class="cat-item" rel="noopener noreferrer"><i class="fas fa-trophy"></i> HİKAYE</a>
+        </div>
+    </nav>
 
     <div class="container">
         <header>
@@ -185,23 +223,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['giris_yap'])) {
         const modal = document.getElementById('loginModal');
         function openModal() { modal.style.display = 'flex'; }
         function closeModal() { modal.style.display = 'none'; }
-        // Dışarı tıklandığında kapansın
-        window.onclick = function(e) { if (e.target == modal) closeModal(); }
-        // Sayfa yüklendiğinde çalışır
-    
-        // Sayfa yüklendiğinde çalışır
-        window.onload = function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    if (urlParams.get('login') === 'true') {
-        // 1. Modalı aç
-        openModal();
         
-        // 2. URL'deki "?login=true" kısmını temizle (Sayfa yenilenmez, sadece adres çubuğu düzelir)
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({path: cleanUrl}, '', cleanUrl);
-    }
-};
+        window.onclick = function(e) { if (e.target == modal) closeModal(); }
+        
+        // Sayfa yüklendiğinde tetiklenecek kontroller
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Eğer giriş başarısız olduysa veya URL'de tetikleyici varsa modalı açık tut
+            if (urlParams.get('login') === 'true' || <?php echo !empty($girisHata) ? 'true' : 'false'; ?>) {
+                openModal();
+                
+                // URL'yi temizle
+                if (urlParams.get('login') === 'true') {
+                    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+                }
+            }
+        };
     </script>
 </body>
 </html>

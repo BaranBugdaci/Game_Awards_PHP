@@ -1,18 +1,57 @@
 <?php
-$mesaj = "";
-$hata = "";
+require dirname(__FILE__) . "/auth_nav.php";
+$mesaj = ""; 
+$hata  = ""; 
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kayit_et'])) {
-    $isim = htmlspecialchars($_POST['tam_ad']);
-    $sifre = $_POST['sifre'];
-    $sifre_tekrar = $_POST['sifre_tekrar'];
+// JSON dosya yolu ayarlaması
+$usersFile = "users/users.json";
+if (!file_exists("users")) mkdir("users", 0755, true);
+if (!file_exists($usersFile)) { file_put_contents($usersFile, json_encode([])); }
 
-    // Şifre eşleşme kontrolü
-    if ($sifre !== $sifre_tekrar) {
-        $hata = "Şifreler birbiriyle eşleşmiyor! Lütfen tekrar kontrol edin.";
+// JSON dosyasından kullanıcıları okuyan fonksiyon
+function readUsersJson($file) {
+    if (file_exists($file)) {
+        $jsonData = file_get_contents($file);
+        return json_decode($jsonData, true) ?? [];
+    }
+    return [];
+}
+
+// FORM POST EDİLDİĞİNDE (Formdaki buton ismi name="kayit_et" olduğu için burayı ona göre eşitledik)
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['kayit_et'])) {
+    // Form elemanlarının 'name' karşılıklarını eşitledik
+    $kullanici = trim(htmlspecialchars($_POST['tam_ad'] ?? '')); // Formdaki name="tam_ad" alanını kullanıcı adı kabul ediyoruz
+    $email     = trim(htmlspecialchars($_POST['email'] ?? ''));
+    $sifre     = $_POST['sifre'] ?? '';
+    $tekrar    = $_POST['sifre_tekrar'] ?? '';
+
+    if (empty($kullanici) || empty($sifre) || empty($email)) {
+        $hata = "Tüm alanları doldurun.";
+    } elseif ($sifre !== $tekrar) {
+        $hata = "Şifreler eşleşmiyor.";
+    } elseif (strlen($sifre) < 6) {
+        $hata = "Şifre en az 6 karakter olmalı.";
     } else {
-        if (!empty($isim)) {
-            $mesaj = "Kaydınız başarıyla oluşturuldu, " . $isim . "! Şimdi giriş yapabilirsiniz.";
+        $users = readUsersJson($usersFile);
+        
+        if (isset($users[$kullanici])) {
+            $hata = "Bu kullanıcı adı zaten alınmış.";
+        } else {
+            // Yeni kullanıcıyı düz metin formatında JSON yapısına uygun hazırlıyoruz
+            $users[$kullanici] = [
+                "password" => $sifre,
+                "email" => $email,
+                "role" => "user"
+            ];
+            
+            // Verileri JSON dosyasına yazıyoruz
+            if (file_put_contents($usersFile, json_encode($users, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+                $_SESSION['username'] = $kullanici;
+                header("Location: Main.php?ok=kayit");
+                exit();
+            } else {
+                $hata = "JSON dosyasına yazılırken bir hata oluştu.";
+            }
         }
     }
 }
@@ -41,7 +80,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kayit_et'])) {
             min-height: 100vh; overflow-x: hidden;
         }
 
-        /* Arka Plan Noise Efekti */
         body::before {
             content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             opacity: 0.04; z-index: -1; pointer-events: none;
@@ -124,7 +162,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kayit_et'])) {
 </head>
 <body>
 
-    <div class="register-container">
+<div class="register-container">
     <a href="/PHP_Game_Awards/Main.php" rel="noopener noreferrer" class="back-link" style="margin-bottom: 20px; display: block;">
         <i class="fas fa-arrow-left"></i> Ana Sayfaya Dön
     </a>

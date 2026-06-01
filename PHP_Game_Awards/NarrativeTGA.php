@@ -1,5 +1,6 @@
 <?php
 session_start(); // ← EN ÜSTE alındı
+ob_start();
 
 function getScoreClass($score) {
     if ($score >= 90) return 'bg-blue';
@@ -127,6 +128,11 @@ $games = [
         <?php endforeach; ?>
     </div>
 </div>
+
+<?php
+        $pageKey = "narrative";
+        include "comments_widget.php";
+?>
 
 <script>
     const modal = document.getElementById('loginModal');

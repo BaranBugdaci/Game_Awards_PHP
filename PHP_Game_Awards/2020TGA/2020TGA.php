@@ -3,14 +3,37 @@
  * TGA Portal - 2020 Winners Page
  * PHP Architecture - Internationalized & Optimized
  */
-session_start(); // Session'ı başlatmayı unutma
+require dirname(__FILE__) . "/../auth_nav.php";
 
 $mesaj = "";
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login_submit'])) {
-    $kullanici = htmlspecialchars($_POST['username']);
-    if (!empty($kullanici)) {
-        $_SESSION['username'] = $kullanici; // Basit bir session ataması
-        $mesaj = "Welcome, " . $_SESSION['username'] . "!";
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
+    $kullanici = trim(htmlspecialchars($_POST['username'] ?? ''));
+    $sifre     = trim($_POST['password'] ?? '');
+    
+    // Alt klasörlerdeki sayfalar için (2025TGA/, 2024TGA/ vb.) bir üst klasördeki users'a bakar:
+    $usersFile = __DIR__ . "/../users/users.json"; 
+
+    $girisHata = "";
+    if (!empty($kullanici) && !empty($sifre)) {
+        
+        // JSON dosyasını oku
+        if (file_exists($usersFile)) {
+            $jsonData = file_get_contents($usersFile);
+            $users = json_decode($jsonData, true) ?? [];
+        } else {
+            $users = [];
+        }
+
+        // Kullanıcı var mı ve şifre JSON'daki şifreyle birebir aynı mı?
+        if (isset($users[$kullanici]) && $sifre === $users[$kullanici]['password']) {
+            $_SESSION['username'] = $kullanici;
+            
+            // PRG: Sayfa yenilendiğinde formun tekrar gönderilmesini engeller
+            header("Location: " . $_SERVER['PHP_SELF'] . "?giris=ok");
+            exit();
+        } else {
+            $girisHata = "Kullanıcı adı veya şifre yanlış.";
+        }
     }
 }
 // 1. HELPER FUNCTIONS: Determines Metacritic CSS class based on score
@@ -145,16 +168,9 @@ $years_nav = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2
     <meta name="description" content="Official list of winners for The Game Awards 2020.">
 </head>
 <body>
+<?php render_nav("../"); ?>
 
-    <div class="auth-nav">
-    <?php if(!isset($_SESSION['username'])): ?>
-        <button class="auth-btn" onclick="openModal()">SIGN UP / LOGIN</button>
-    <?php else: ?>
-        <span style="color:var(--accent); font-weight:900;">
-            <i class="fas fa-user-circle"></i> Welcome, <?php echo $_SESSION['username']; ?>
-        </span>
-    <?php endif; ?>
-</div>
+    
 
 <div class="modal-overlay" id="loginModal">
     <div class="modal-box">
@@ -163,6 +179,8 @@ $years_nav = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2
         <h2>LOGIN</h2>
         <p class="modal-info">Please login to interact, participate in polls and events.</p>
         
+        <?php include "../modal_alert.php"; ?>
+
         <form method="POST">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
@@ -175,15 +193,6 @@ $years_nav = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2
     </div>
 </div>
 
-    <nav class="category-nav">
-        <div class="nav-container">
-            <a href="../ActionTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-sword"></i> ACTION</a>
-            <a href="../RPG_TGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-magic"></i> RPG</a>
-            <a href="../IndieTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-rocket"></i> INDIE</a>
-            <a href="../FightingTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-chess"></i> FIGHTING</a>
-            <a href="../NarrativeTGA.php" rel="noopener noreferrer" class="cat-item"><i class="fas fa-trophy"></i> STORY</a>
-        </div>
-    </nav> 
 
     <nav class="side-nav">
         <?php foreach ($years_nav as $year): ?>
@@ -273,6 +282,11 @@ $years_nav = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2
             <?php endforeach; ?>
         </div>
     </div>
+    
+    <?php
+        $pageKey = "2020";
+        include "../comments_widget.php";
+    ?>
 
     <footer style="margin-top: 80px; padding: 40px; border-top: 1px solid rgba(197, 160, 89, 0.1); color: var(--text-dim); font-size: 0.8rem; text-align: center;">
         <p>&copy; <?php echo $current_year; ?> TGA Portal. All rights reserved.</p>

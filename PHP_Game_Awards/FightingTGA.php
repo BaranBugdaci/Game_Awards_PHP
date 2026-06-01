@@ -1,4 +1,5 @@
 <?php
+ob_start();      // ← Tüm çıktıyı tamponla (header() redirect için şart)
 session_start(); // ← EN ÜSTE alındı
 
 function getScoreClass($score) {
@@ -127,6 +128,11 @@ $games = [
         <?php endforeach; ?>
     </div>
 </div>
+
+<?php
+    $pageKey = "fighting";
+    include "comments_widget.php";
+?>
 
 <script>
     const modal = document.getElementById('loginModal');

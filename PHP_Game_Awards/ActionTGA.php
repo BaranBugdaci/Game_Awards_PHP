@@ -1,11 +1,13 @@
 <?php
+session_start(); // Session'ı başlatmayı unutma
+ob_start();
+
 // Metacritic puanına göre renk sınıfını belirleyen yardımcı fonksiyon
 function getScoreClass($score) {
     if ($score >= 90) return 'bg-blue';
     if ($score >= 80) return 'bg-green';
     return 'bg-yellow'; // Diğer durumlar için
 }
-session_start(); // Session'ı başlatmayı unutma
 
 $mesaj = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login_submit'])) {
@@ -300,6 +302,10 @@ $games = [
         <?php endforeach; ?>
     </div>
 </div>
+<?php
+        $pageKey = "action";
+        include "comments_widget.php";
+    ?>
 <script>
 const modal = document.getElementById('loginModal');
 function openModal() { modal.style.display = 'flex'; }

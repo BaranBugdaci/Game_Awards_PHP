@@ -1,0 +1,13 @@
+{
+    "Baranikov": {
+        "password": "123456",
+        "email": "baranbgdc44@gmail.com",
+        "role": "user",
+        "avatar": "users\/avatars\/avatar_baranikov.png"
+    },
+    "Rasmadov": {
+        "password": "741852",
+        "email": "baranbgdc44@gmail.com",
+        "role": "user"
+    }
+}
