@@ -1,2 +1,0 @@
-Baranikov||users/avatars/avatar_baranikov.png
-Rasmadov||users/avatars/avatar_rasmadov.png
